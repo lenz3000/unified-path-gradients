@@ -150,7 +150,7 @@ class U1CouplingWrapper(nn.Module):
     def reverse(self, x, dlogqdx=None):
         if not self.coupling.training or not torch.is_grad_enabled() or dlogqdx is None:
             return self.coupling.reverse(x)
-        raise NotimplementedError("Reverse piggyback not implemented")
+        raise NotImplemented("Reverse piggyback not implemented")
 
     def _apply_coupling(self, z, dlogqdz):
         # Preparing the variables
