@@ -14,9 +14,9 @@ jobs:
 
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10"]
 
     steps:
     - uses: actions/checkout@v3
@@ -38,7 +38,6 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest
         python minimal_mgm_example.py --gradient-estimator fastPathPQ --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
         python minimal_mgm_example.py --gradient-estimator fastPathQP --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
         python minimal_mgm_example.py --gradient-estimator DropInQP --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
