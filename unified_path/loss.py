@@ -111,8 +111,7 @@ class FastDropInPathPQ(MaximumLikelihood):
 
         z1, logq = self.model.f(x1)
         actions = self.action(x1)
-        logp_t = -actions
-        nlwt = logq - logp_t
+        nlwt = logq + actions
         grad = torch.autograd.grad(nlwt.mean(), x1)[0]
 
         z1 = z1.detach().clone().requires_grad_()
@@ -148,9 +147,7 @@ class FastPath(Loss):
             return self.alternative()
 
         if not hasattr(self.sampler, "piggy_back_forward"):
-            raise TypeError(
-                "Model doesn't support piggy_back_forward, probably not a path gradient flow"
-            )
+            raise TypeError("Model not a path gradient flow")
 
         # If samples are not given, sample from given initial distribution
         if samples is None:
@@ -193,9 +190,8 @@ class FastPath(Loss):
         )[0]
 
         # Amalgamate the gradients
-        dLdx = dlogqdx + dfinalpdx
+        dLdx = (dlogqdx + dfinalpdx) / self.batch_size
         log_weights = -(actions + log_q).detach()
-        dLdx = dLdx / self.batch_size
         loss_mean = sign * log_weights.mean()
 
         # Add the gradient-yielding term
@@ -210,3 +206,52 @@ class FastPath(Loss):
 
     def __str__(self):
         return f"FastPath-{'QP' if self.qp else 'PQ'}"
+
+
+def load_loss(cfg, flow, config_sampler, action, device):
+    if cfg.gradient_estimator == "FastDropInPQ":
+        loss = FastDropInPathPQ(
+            model=flow,
+            config_sampler=config_sampler,
+            action=action,
+            lat_shape=cfg.lat_shape,
+            device=device,
+        )
+    elif "fastPath" in cfg.gradient_estimator:
+        kind = cfg.gradient_estimator.replace("fastPath", "")
+        loss = FastPath(
+            model=flow,
+            config_sampler=config_sampler,
+            action=action,
+            kind=kind,
+            lat_shape=cfg.lat_shape,
+            batch_size=cfg.batch_size,
+        )
+    elif cfg.gradient_estimator == "ML":
+        loss = MaximumLikelihood(
+            model=flow,
+            config_sampler=config_sampler,
+            action=action,
+            lat_shape=cfg.lat_shape,
+            device=device,
+        )
+    elif cfg.gradient_estimator == "RepQP":
+        loss = RepQP(
+            model=flow,
+            action=action,
+            lat_shape=cfg.lat_shape,
+            batch_size=cfg.batch_size,
+        )
+    elif cfg.gradient_estimator == "DropInQP":
+        loss = DropInPathQP(
+            model=flow,
+            action=action,
+            lat_shape=cfg.lat_shape,
+            batch_size=cfg.batch_size,
+        )
+
+    else:
+        raise ValueError(
+            f"{cfg.gradient_estimator} not in ['RepQP', 'ML', 'fastPathPQ', 'fastPathQP', 'DropInQP', 'FastDropInPQ']"
+        )
+    return loss

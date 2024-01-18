@@ -9,68 +9,13 @@ from tqdm.auto import tqdm
 
 from unified_path.action import MGM
 from unified_path.importsamp import estimate_ess_q, estimate_ess_p
-from unified_path.loss import (
-    FastPath,
-    FastDropInPathPQ,
-    MaximumLikelihood,
-    RepQP,
-    DropInPathQP,
-)
+from unified_path.loss import load_loss
 from unified_path.models import RealNVP, RealNVP_Path, COUPLINGS
 
 
 def infinite_sampling(dataloader):
     while True:
         yield from iter(dataloader)
-
-
-def load_loss(cfg, flow, config_sampler, norm_action, device):
-    if cfg.gradient_estimator == "FastDropInPQ":
-        loss = FastDropInPathPQ(
-            model=flow,
-            config_sampler=config_sampler,
-            action=norm_action,
-            lat_shape=[cfg.dim],
-            device=device,
-        )
-    elif "fastPath" in cfg.gradient_estimator:
-        kind = cfg.gradient_estimator.replace("fastPath", "")
-        loss = FastPath(
-            model=flow,
-            config_sampler=config_sampler,
-            action=norm_action,
-            kind=kind,
-            lat_shape=[cfg.dim],
-            batch_size=cfg.batch_size,
-        )
-    elif cfg.gradient_estimator == "ML":
-        loss = MaximumLikelihood(
-            model=flow,
-            config_sampler=config_sampler,
-            action=norm_action,
-            lat_shape=[cfg.dim],
-            device=device,
-        )
-    elif cfg.gradient_estimator == "RepQP":
-        loss = RepQP(
-            model=flow,
-            action=norm_action,
-            lat_shape=[cfg.dim],
-            batch_size=cfg.batch_size,
-        )
-    elif cfg.gradient_estimator == "DropInQP":
-        loss = DropInPathQP(
-            model=flow,
-            action=norm_action,
-            lat_shape=[cfg.dim],
-            batch_size=cfg.batch_size,
-        )
-
-    else:
-        raise ValueError(
-            f"{cfg.gradient_estimator} not in ['RepQP', 'ML', 'fastPathPQ', 'fastPathQP', 'DropInQP', 'FastDropInPQ']"
-        )
-    return loss
 
 
 def load_flow(cfg):
@@ -173,6 +118,7 @@ def main(**cfg):
     """Function to get all CLI arguments into script."""
 
     cfg = Namespace(**cfg)
+    cfg.lat_shape = [cfg.dim]
     print(cfg)
 
     torch.manual_seed(cfg.seed)
