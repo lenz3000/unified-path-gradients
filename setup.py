@@ -13,6 +13,7 @@ setup(
         "tensorboard",
         "click",
         "jupyter",
+        "einops",
     ],
     setup_requires=[
         "setuptools_scm",

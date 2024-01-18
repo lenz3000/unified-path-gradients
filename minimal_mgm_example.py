@@ -1,8 +1,5 @@
 #!/usr/bin/env python
-import copy
-import platform
 from argparse import Namespace
-import json, hashlib
 
 import click
 import torch
