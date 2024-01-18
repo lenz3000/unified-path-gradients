@@ -3,7 +3,6 @@ from setuptools import setup, find_packages
 
 setup(
     name="unified_path",
-    use_scm_version=True,
     packages=find_packages(),
     install_requires=[
         "torch>=0.4.1",
