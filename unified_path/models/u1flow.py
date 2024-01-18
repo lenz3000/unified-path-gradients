@@ -88,7 +88,12 @@ class U1Flow(nn.Module):
         return z, logq
 
     def g(self, z):
-        return self.forward(z)
+        axes = tuple(range(1, len(z.shape)))
+        log_q_prior = self.base_distribution.log_prob(z).sum(dim=axes)
+
+        z, log_q_flow = self.forward(z)
+
+        return z, log_q_flow + log_q_prior
 
     def reverse(self, x):
         logq = 0.0
@@ -99,7 +104,10 @@ class U1Flow(nn.Module):
         return x, logq
 
     def f(self, z):
-        return self.reverse(z)
+        z, logdet = self.reverse(z)
+        axes = tuple(range(1, len(z.shape)))
+        log_q_prior = self.base_distribution.log_prob(z).sum(dim=axes)
+        return z, logdet + log_q_prior
 
     def log_prob(self, x):
         z, logq = self.reverse(x)
