@@ -9,6 +9,7 @@ from .modules import ConvNet
 
 
 class U1Flow(nn.Module):
+    # Originally implemented in https://arxiv.org/abs/2101.08176
     def __init__(
         self,
         lat_shape,
@@ -16,7 +17,7 @@ class U1Flow(nn.Module):
         n_mixture_comps=2,
         hidden_sizes=[8, 8],
         kernel_size=3,
-        inv_prec=1e-6
+        inv_prec=1e-6,
     ):
         super().__init__()
 

@@ -181,36 +181,6 @@ class Tanhgrow(torch.nn.Module):
         )
 
 
-class FCNet(nn.Module):
-    def __init__(self, lat_shape, in_channels, out_channels, hidden_sizes):
-        super().__init__()
-        self.out_channels = out_channels
-        in_dim = np.prod(lat_shape) * in_channels
-        out_dim = np.prod(lat_shape) * out_channels
-
-        self.net = nn.Sequential(
-            *[
-                nn.Linear(in_dim, hidden_sizes[0]),
-                nn.LeakyReLU(),
-                nn.Sequential(
-                    *[
-                        nn.Sequential(
-                            nn.Linear(hidden_sizes[i], hidden_sizes[i + 1]),
-                            nn.LeakyReLU(),
-                        )
-                        for i in range(len(hidden_sizes) - 1)
-                    ]
-                ),
-                nn.Linear(hidden_sizes[-1], out_dim),
-            ]
-        )
-
-    def forward(self, x):
-        B, _, H, W = x.shape
-        y = self.net(x.reshape(B, -1))
-        return y.reshape((B, self.out_channels, H, W))
-
-
 class ConvNet(nn.Sequential):
     def __init__(
         self, hidden_sizes, kernel_size, in_channels, out_channels, circular=True

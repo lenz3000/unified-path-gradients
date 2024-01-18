@@ -45,46 +45,6 @@ class Coupling(nn.Module):
         return partial(clss, *args)
 
 
-@register_coupling("conv")
-class ConvCoupling(Coupling):
-    def __init__(self, lat_shape, mask_config, channels=8, nblocks=4, bias=False):
-        super().__init__(mask_config=mask_config)
-        PConv2d = partial(
-            nn.Conv2d, kernel_size=3, padding=1, padding_mode="circular", bias=bias
-        )
-        self.layers = nn.Sequential(
-            *[
-                Unsqueeze(),
-                PConv2d(in_channels=1, out_channels=channels),
-                Tanhgrow(),
-                nn.Sequential(
-                    *[
-                        nn.Sequential(
-                            PConv2d(in_channels=channels, out_channels=channels),
-                            Tanhgrow(),
-                        )
-                        for _ in range(nblocks)
-                    ]
-                ),
-                PConv2d(in_channels=channels, out_channels=1),
-                Squeeze(),
-            ]
-        )
-
-    def forward(self, input):
-        mask = self._get_mask(input)
-        return input + (1 - mask) * self.layers(input * mask)
-
-    def reverse(self, input):
-        mask = self._get_mask(input)
-        return input - (1 - mask) * self.layers(input * mask)
-
-    def _get_mask(self, input):
-        return torch.from_numpy(
-            (np.indices(input.shape).sum(0) + self.mask_config) % 2
-        ).to(input.device)
-
-
 @register_coupling("AltFCS")
 class AltFCSCoupling(Coupling):
     def __init__(
@@ -160,7 +120,6 @@ class AltFCSCoupling(Coupling):
             x = torch.stack((on, off), dim=2)
         else:
             x = torch.stack((off, on), dim=2)
-
         return x
 
 
@@ -239,7 +198,10 @@ class RealNVP(nn.Module):
         assert coupling_factory in (
             AltFCSCoupling,
             NormAltFCSCoupling,
-        ), f"RealNVP needs scaling but is {coupling_factory} but should be (AltFCSCoupling, NormAltFCSCoupling)"
+        ), (
+            f"RealNVP needs scaling but is {coupling_factory} "
+            f" should be in (AltFCSCoupling, NormAltFCSCoupling)"
+        )
         self.couplings = nn.ModuleList(
             [
                 coupling_factory(
@@ -323,7 +285,7 @@ class RealNVP(nn.Module):
         self.load_state_dict(torch.load(checkpoint, map_location=device)["net"])
 
 
-class PathCouplingWrapper(torch.nn.Module):
+class PathAffineCouplingWrapper(torch.nn.Module):
     """Wrapper for coupling layers for implementing the path gradient Only when training and for
     the forward pass the path gradient is applied."""
 
@@ -342,104 +304,56 @@ class PathCouplingWrapper(torch.nn.Module):
         return self._apply_coupling(x, dlogqdx, reverse=True)
 
     def _apply_coupling(self, z, dlogqdz, reverse=False):
+        og_shape = z.shape
         z = z.reshape(z.shape[0], -1)
         dlogqdz = dlogqdz.reshape(dlogqdz.shape[0], -1)
 
-        on, off = self.coupling._split(z)
-        dLdz_on, dLdz_off = self.coupling._split(dlogqdz)
+        trans, cond = self.coupling._split(z)
+        dLdz_trans, dLdz_cond = self.coupling._split(dlogqdz)
 
-        off.requires_grad_(True)
-        on.requires_grad_(True)
+        cond.requires_grad_(True)
+        trans.requires_grad_(True)
 
-        shiftscale = self.coupling.layers(off)
+        shiftscale = self.coupling.layers(cond)
         shift, logscale = self.coupling._split(shiftscale)
         if reverse:
-            on = (on - shift) / logscale.exp()
+            trans = (trans - shift) / logscale.exp()
             # The detach here has probably an effect of -0.1% runtime
-            on_back = on.detach() * logscale.exp() + shift
+            trans_back = trans.detach() * logscale.exp() + shift
             sign = +1
         else:
-            on = on * logscale.exp() + shift
-            on_back = (on.detach() - shift) / logscale.exp()
+            trans = trans * logscale.exp() + shift
+            trans_back = (trans.detach() - shift) / logscale.exp()
             sign = -1
+
         logdet = logscale.sum(-1)
-        dLdz_off1 = torch.autograd.grad(
-            (dLdz_on.detach() * on_back).sum() + sign * logdet.sum(),
-            off,
+        dLdz_cond1 = torch.autograd.grad(
+            (dLdz_trans.detach() * trans_back).sum() + sign * logdet.sum(),
+            cond,
             retain_graph=True,
             allow_unused=False,
         )[0]
-        dLdx_off = dLdz_off + dLdz_off1
+
+        dLdx_cond = dLdz_cond + dLdz_cond1
         if reverse:
-            dLdx_on = (dLdz_on * logscale.exp()).detach()
+            dLdx_trans = (dLdz_trans * logscale.exp()).detach()
         else:
-            dLdx_on = (dLdz_on / logscale.exp()).detach()
+            dLdx_trans = (dLdz_trans / logscale.exp()).detach()
 
-        x = self.coupling._join(on, off)
-        dLdx = self.coupling._join(dLdx_on, dLdx_off).detach()
+        x = self.coupling._join(trans, cond)
+        dLdx = self.coupling._join(dLdx_trans, dLdx_cond).detach()
 
         return (
-            x.reshape((z.shape[0],) + tuple(self.coupling.lat_shape)),
+            x.reshape(og_shape),
             logdet,
-            dLdx.reshape((z.shape[0],) + tuple(self.coupling.lat_shape)),
-        )
-
-
-class GeneralPathCouplingWrapper(PathCouplingWrapper):
-    def _apply_coupling(self, z, dlogqdz, reverse=False):
-        z = z.reshape(z.shape[0], -1)
-        dlogqdz = dlogqdz.reshape(dlogqdz.shape[0], -1)
-
-        # Preparing the variables
-        z.requires_grad_(True)
-        z_on, z_off = self.coupling._split(z)
-        z_ = self.coupling._join(z_on, z_off)
-        dLdz_on, dLdz_off = self.coupling._split(dlogqdz)
-
-        # Applying the coupling
-        x, c_log_det = self.coupling._apply_coupling(z_, reverse=reverse)
-
-        # Redoing the splitting
-        x_on, x_off = self.coupling._split(x)
-
-        # Getting the partial derivatives
-        dx_ondz_on = torch.autograd.grad(x_on.sum(), z_on, retain_graph=True)[0]
-        ddldz = torch.autograd.grad(
-            c_log_det.sum() if reverse else -c_log_det.sum(),
-            (z_on, z_off),
-            retain_graph=True,
-            allow_unused=False,
-        )
-        # Implicit gradients
-        dLdx_on = (dLdz_on + ddldz[0]) / dx_ondz_on
-        ddx_ondz_off = torch.autograd.grad(
-            x_on,
-            z_off,
-            grad_outputs=dLdx_on,
-            retain_graph=True,
-        )[0]
-        # Since the off part is passed through, so are the gradients
-        dLdx_off = dLdz_off - ddx_ondz_off + ddldz[1]
-
-        # Appending the piggy back gradients to the inputs
-
-        x = self.coupling._join(x_on, x_off)
-        dLdx = self.coupling._join(dLdx_on, dLdx_off).detach()
-
-        return (
-            x.reshape((x.shape[0],) + tuple(self.coupling.lat_shape)),
-            c_log_det,
-            dLdx.reshape((x.shape[0],) + tuple(self.coupling.lat_shape)),
+            dLdx.reshape(og_shape),
         )
 
 
 class RealNVP_Path(RealNVP):
-    def __init__(self, *args, gen_wrapper=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if gen_wrapper:
-            wrapper = GeneralPathCouplingWrapper
-        else:
-            wrapper = PathCouplingWrapper
+        wrapper = PathAffineCouplingWrapper
         self.couplings = nn.ModuleList(
             [wrapper(coupling) for coupling in self.couplings]
         )
@@ -465,37 +379,3 @@ class RealNVP_Path(RealNVP):
             log_det += sign * c_log_det
 
         return x, log_det, dLdx
-
-    def g(self, x):
-        """
-        g: Z -> X
-        Evaluates forward flow, transforming z to x
-        simultaneous applies change of variable to probability
-        :param x: latent dim z which is transformed to x
-        :return:
-        """
-        log_det = self._prior_log_prob(x)  # log q(z)
-
-        for coupling in self.couplings:
-            # evaluate coupling layers and adding log det Jacobian to log det
-            x, c_log_det = coupling(x)
-            log_det -= c_log_det
-
-        return x, log_det
-
-    def f(self, x):
-        """Evaluate transformation f: X -> Z.
-
-        :param x:
-        :return:
-        """
-        device = list(self.parameters())[0].device
-        log_det = torch.zeros((x.shape[0],), device=device)
-        for coupling in reversed(self.couplings):
-            x, c_log_det = coupling.reverse(x)
-            log_det -= c_log_det
-
-        # add prior entropy estimate
-        log_prob = self._prior_log_prob(x) + log_det
-
-        return x, log_prob
