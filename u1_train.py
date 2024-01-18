@@ -75,7 +75,7 @@ def train(kl_loss: Loss, n_steps):
     default="fastPathQP",
     help="Gradient Estimator",
 )
-@click.option("--n-coupling-layers", default=26, help="Number of coupling layers")
+@click.option("--n-coupling-layers", default=24, help="Number of coupling layers")
 @click.option("--nmixtures", default=6, help="blocks per coupling layer")
 @click.option("--L", default=16, type=int, help="Lattice extent")
 @click.option("--beta", default=3.0, type=float, help="inverse gauge coupling")
