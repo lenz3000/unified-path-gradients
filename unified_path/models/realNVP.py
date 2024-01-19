@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from functools import partial
 
-from .modules import Tanhgrow, Unsqueeze, Squeeze
 
 COUPLINGS = {}
 

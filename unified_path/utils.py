@@ -1,12 +1,8 @@
-import datetime
-import json
-import math
 import logging
 import numpy as np
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-
 
 
 def calc_imp_weights(log_weight_hist, include_factor_N=True):
@@ -27,6 +23,7 @@ def calc_imp_weights(log_weight_hist, include_factor_N=True):
         weight_hist = weight_hist / weight_hist.mean(dim=0)
 
     return weight_hist
+
 
 def config_sampler(configs, batchsize, overrelax):
     if overrelax:
@@ -108,32 +105,3 @@ def invert_transform_bisect(y, *, f, tol, max_iter, a=0, b=2 * np.pi):
             f"WARNING: Did not converge to tol {tol} in {max_iter} iters! Error was {err}"
         )
         return mid_x
-
-
-# def create_sampler(**kwargs):
-#    if kwargs["sampler"].lower() in ["realnvp", "realnvp-path"]:
-#        model = RealNVP if "path" not in kwargs["sampler"].lower() else RealNVP_Path
-#        coupling_factory = COUPLINGS[kwargs["coupling"]]
-#        sampler = model(
-#            lat_shape=kwargs["lat_shape"],
-#            coupling_factory=COUPLINGS[kwargs["coupling"]],
-#            ncouplings=kwargs["ncouplings"],
-#            nblocks=kwargs["nblocks"],
-#            n_hidden=kwargs["hidden_width"],
-#            bias=kwargs["bias"],
-#            activation=kwargs["activation"],
-#            base_dist=kwargs["base_dist"],
-#            loss=kwargs["loss"],
-#            gen_wrapper=kwargs["gen_wrapper"],
-#        )
-#    elif kwargs["sampler"].lower() in ["u1flow", "u1flow-path"]:
-#        model = U1Flow if "path" not in kwargs["sampler"].lower() else U1Flow_Path
-#        sampler = model(
-#            lat_shape=kwargs["lat_shape"],
-#            n_mixture_comps=kwargs["nmixtures"],
-#            n_layers=kwargs["ncouplings"],
-#        )
-#
-#    else:
-#        raise NotImplementedError(f"{kwargs['sampler']} is not implemented")
-#    return sampler

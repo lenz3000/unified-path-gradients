@@ -1,7 +1,5 @@
-from numpy.core.fromnumeric import size
 import torch
 import torch.nn as nn
-import numpy as np
 
 from torch.nn import Module, Conv2d, Parameter
 

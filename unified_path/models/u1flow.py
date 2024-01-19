@@ -158,7 +158,7 @@ class U1CouplingWrapper(nn.Module):
     def reverse(self, x, dlogqdx=None):
         if not self.coupling.training or not torch.is_grad_enabled() or dlogqdx is None:
             return self.coupling.reverse(x)
-        raise NotImplemented("Reverse piggyback not implemented")
+        raise NotImplementedError("Reverse piggyback not implemented")
 
     def _apply_coupling(self, z, dlogqdz):
         # Preparing the variables
@@ -366,7 +366,10 @@ class PlaquetteCoupling(nn.Module):
         s, t = weights[:, :-1], weights[:, -1]
 
         p1 = torch.remainder(self.m_active * (p_prime - t).unsqueeze(1), 2 * np.pi)
-        transform = lambda p: self.m_active * mixture_tan_transform(p, s)
+
+        def transform(p):
+            return self.m_active * mixture_tan_transform(p, s)
+
         p1 = invert_transform_bisect_wgrad(
             p1, f=transform, tol=self.inv_prec, max_iter=self.inv_max_iter
         )

@@ -19,7 +19,7 @@ def infinite_sampling(dataloader):
 
 
 def load_flow(cfg):
-    model = RealNVP if not "fastPath" in cfg.gradient_estimator else RealNVP_Path
+    model = RealNVP if "fastPath" not in cfg.gradient_estimator else RealNVP_Path
     flow = model(
         lat_shape=[cfg.dim],
         coupling_factory=COUPLINGS["NormAltFCS"],
@@ -85,7 +85,8 @@ def train(
                 device=loss.device,
             )
             pbar.set_description(
-                f"loss: {loss.item():.3e} || NLL train {train_nll.item():.3e} test {test_nll.item():.3e} || ESS q:{ess:.3f} p:{forward_ess:.3f}"
+                f"loss: {loss.item():.3e} || NLL train {train_nll.item():.3e} test {test_nll.item():.3e}"
+                f"|| ESS q:{ess:.3f} p:{forward_ess:.3f}"
             )
 
         tr_l.append(loss.item())

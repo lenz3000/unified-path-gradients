@@ -79,7 +79,7 @@ def test_PastLoss():
 
     fast_pathQP = load_loss(
         Namespace(
-            gradient_estimator=f"fastPathQP",
+            gradient_estimator="fastPathQP",
             lat_shape=[2],
             batch_size=n_samples,
         ),
@@ -90,7 +90,7 @@ def test_PastLoss():
     )
     repQP = load_loss(
         Namespace(
-            gradient_estimator=f"RepQP",
+            gradient_estimator="RepQP",
             lat_shape=[2],
             batch_size=n_samples,
         ),

@@ -13,7 +13,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 def load_flow(cfg):
-    model = U1Flow if not "fastPath" in cfg.gradient_estimator else U1Flow_Path
+    model = U1Flow if "fastPath" not in cfg.gradient_estimator else U1Flow_Path
     return model(
         lat_shape=cfg.lat_shape[1:],
         n_mixture_comps=cfg.nmixtures,
@@ -22,7 +22,6 @@ def load_flow(cfg):
 
 
 def train(kl_loss: Loss, n_steps):
-
     optimizer = torch.optim.Adam(kl_loss.sampler.parameters(), lr=0.0001)
     scheduler = ReduceLROnPlateau(
         optimizer,
@@ -46,7 +45,6 @@ def train(kl_loss: Loss, n_steps):
             optimizer.step()
             scheduler.step(log_w_tilde.std())
 
-
             if step % 4000 == 0:
                 ess = estimate_ess_q(
                     kl_loss.sampler,
@@ -59,9 +57,9 @@ def train(kl_loss: Loss, n_steps):
 
             pbar.set_description(
                 f"step: {step} "
-                f'ELBO: {log_w_tilde.mean():8.2e} '
-                f'action: {actions.mean():6.2e}+-{actions.std():4.1e}' 
-                f' {ess_string}'
+                f"ELBO: {log_w_tilde.mean():8.2e} "
+                f"action: {actions.mean():6.2e}+-{actions.std():4.1e}"
+                f" {ess_string}"
             )
 
 
@@ -80,7 +78,6 @@ def train(kl_loss: Loss, n_steps):
 @click.option("--L", default=16, type=int, help="Lattice extent")
 @click.option("--beta", default=3.0, type=float, help="inverse gauge coupling")
 def main(**cfg):
-
     cfg = Namespace(**cfg)
     cfg.lat_shape = [2, cfg.l, cfg.l]
     print(cfg)
