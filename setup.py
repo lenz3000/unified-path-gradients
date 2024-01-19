@@ -13,6 +13,7 @@ setup(
         "click",
         "jupyter",
         "einops",
+        "pytest",
     ],
     setup_requires=[
         "setuptools_scm",

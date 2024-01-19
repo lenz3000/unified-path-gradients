@@ -30,7 +30,16 @@ torch.manual_seed(0)
 n_samples = 16
 
 
-def transfer_path_to_normal(slow_flow, fast_flow):
+gen_dict = {
+    "gradient_estimator": "fastPathQP",
+    "dim": 2,
+    "n_coupling_layers": 4,
+    "n_blocks": 2,
+    "hidden": 32,
+}
+
+
+def transfer_path_flow_to_normal_flow(slow_flow, fast_flow):
     fast_dict = fast_flow.state_dict()
 
     slow_sdict = {}
@@ -45,33 +54,58 @@ def transfer_path_to_normal(slow_flow, fast_flow):
     slow_flow.load_state_dict(slow_sdict)
 
 
-def get_grads(model):
+def gather_grads(model):
     return torch.concat(
         tuple(p.grad.reshape(-1) for p in model.parameters() if p.grad is not None)
     )
 
 
-def get_fast_slow_pair():
-    gen_dict = {
-        "gradient_estimator": "fastPathQP",
-        "dim": 2,
-        "n_coupling_layers": 4,
-        "n_blocks": 2,
-        "hidden": 32,
-    }
+def get_fast_slow_twins():
+    gen_dict_ = dict(gen_dict)
 
     fast_flow = load_flow(Namespace(**gen_dict)).to(device)
-    gen_dict["gradient_estimator"] = "RepQP"
-    slow_flow = load_flow(Namespace(**gen_dict)).to(device)
+    gen_dict_["gradient_estimator"] = "RepQP"
+    slow_flow = load_flow(Namespace(**gen_dict_)).to(device)
 
-    transfer_path_to_normal(slow_flow, fast_flow)
+    transfer_path_flow_to_normal_flow(slow_flow, fast_flow)
     fast_flow.zero_grad()
     slow_flow.zero_grad()
     return fast_flow, slow_flow
 
 
-def check_fastPath(direction):
-    fast_flow, slow_flow = get_fast_slow_pair()
+def test_PastLoss():
+    fast_flow, slow_flow = get_fast_slow_twins()
+    eps_train = fast_flow.sample_base(n_samples)
+
+    fast_pathQP = load_loss(
+        Namespace(
+            gradient_estimator=f"fastPathQP",
+            lat_shape=[2],
+            batch_size=n_samples,
+        ),
+        fast_flow,
+        None,
+        norm_action,
+        device,
+    )
+    repQP = load_loss(
+        Namespace(
+            gradient_estimator=f"RepQP",
+            lat_shape=[2],
+            batch_size=n_samples,
+        ),
+        slow_flow,
+        None,
+        norm_action,
+        device,
+    )
+    floss = fast_pathQP(eps_train)
+    sloss = repQP(eps_train)
+    assert torch.allclose(floss[0], sloss[0], atol=1e-5)
+
+
+def check_fastPath_RealNVP_grads(direction):
+    fast_flow, slow_flow = get_fast_slow_twins()
     eps_train = fast_flow.sample_base(n_samples)
     config_sampler = None
     if direction == "PQ":
@@ -110,48 +144,17 @@ def check_fastPath(direction):
     floss[0].backward()
     sloss[0].backward()
 
-    fgrad = get_grads(fast_flow)
-    sgrad = get_grads(slow_flow)
+    fgrad = gather_grads(fast_flow)
+    sgrad = gather_grads(slow_flow)
     assert torch.allclose(fgrad, sgrad, atol=1e-5)
 
 
-def test_fastPath():
-    check_fastPath("QP")
-    check_fastPath("PQ")
+def test_fastPath_RealNVP():
+    check_fastPath_RealNVP_grads("QP")
+    check_fastPath_RealNVP_grads("PQ")
 
 
-def test_forward_RealNVPPath():
-    fast_flow, slow_flow = get_fast_slow_pair()
-    eps_train = fast_flow.sample_base(n_samples)
-
-    fast_pathQP = load_loss(
-        Namespace(
-            gradient_estimator=f"fastPathQP",
-            lat_shape=[2],
-            batch_size=n_samples,
-        ),
-        fast_flow,
-        None,
-        norm_action,
-        device,
-    )
-    repQP = load_loss(
-        Namespace(
-            gradient_estimator=f"RepQP",
-            lat_shape=[2],
-            batch_size=n_samples,
-        ),
-        slow_flow,
-        None,
-        norm_action,
-        device,
-    )
-    floss = fast_pathQP(eps_train)
-    sloss = repQP(eps_train)
-    assert torch.allclose(floss[0], sloss[0], atol=1e-5)
-
-
-def test_piggyBack():
+def test_piggyBack_CouplingFlows():
     def piggy_back_eval(flow):
         eps_train = flow.sample_base(n_samples)
         x, logq = flow.g(eps_train)
@@ -159,14 +162,6 @@ def test_piggyBack():
         x2, logdet2, _ = flow.piggy_back_forward(eps_train, torch.zeros_like(eps_train))
         assert torch.allclose(x, x2, atol=1e-5)
         assert torch.allclose(logdet, logdet2, atol=1e-5)
-
-    gen_dict = {
-        "gradient_estimator": "fastPathQP",
-        "dim": 2,
-        "n_coupling_layers": 4,
-        "n_blocks": 2,
-        "hidden": 32,
-    }
 
     flow = load_flow(Namespace(**gen_dict)).to(device)
     piggy_back_eval(flow)
@@ -179,7 +174,7 @@ def test_piggyBack():
     piggy_back_eval(flow)
 
 
-def test_invert():
+def test_invert_CouplingFlows():
     def invert_eval(flow):
         eps_train = flow.sample_base(n_samples)
         x, logq = flow.g(eps_train)
@@ -187,14 +182,6 @@ def test_invert():
 
         assert torch.allclose(eps_train, eps2, atol=1e-5)
         assert torch.allclose(logq, logq2, atol=1e-5)
-
-    gen_dict = {
-        "gradient_estimator": "fastPathQP",
-        "dim": 2,
-        "n_coupling_layers": 4,
-        "n_blocks": 2,
-        "hidden": 32,
-    }
 
     flow = load_flow(Namespace(**gen_dict)).to(device)
     invert_eval(flow)
