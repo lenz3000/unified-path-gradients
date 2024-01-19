@@ -105,7 +105,7 @@ def main(**cfg):
     print(cfg)
 
     torch.manual_seed(cfg.seed)
-    print(f"Setting up action and sampling ...")
+    print("Setting up action and sampling ...")
     num_test_samples = 1_000
 
     device = (
