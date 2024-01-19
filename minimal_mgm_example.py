@@ -10,25 +10,7 @@ from tqdm.auto import tqdm
 from unified_path.action import MGM
 from unified_path.importsamp import estimate_ess_q, estimate_ess_p
 from unified_path.loss import load_loss
-from unified_path.models import RealNVP, RealNVP_Path, COUPLINGS
-
-
-def infinite_sampling(dataloader):
-    while True:
-        yield from iter(dataloader)
-
-
-def load_flow(cfg):
-    model = RealNVP if "fastPath" not in cfg.gradient_estimator else RealNVP_Path
-    flow = model(
-        lat_shape=[cfg.dim],
-        coupling_factory=COUPLINGS["NormAltFCS"],
-        ncouplings=cfg.n_coupling_layers,
-        nblocks=cfg.n_blocks,
-        n_hidden=cfg.hidden,
-        loss=cfg.gradient_estimator,
-    )
-    return flow
+from unified_path.models.realNVP import load_RealNVP, infinite_sampling
 
 
 def train(
@@ -139,7 +121,7 @@ def main(**cfg):
     X_train = norm_action.sample((cfg.nsamples,)).to(device)
     X_test = norm_action.sample((num_test_samples,)).to(device)
 
-    flow = load_flow(cfg).to(device)
+    flow = load_RealNVP(cfg).to(device)
 
     config_sampler = infinite_sampling(
         DataLoader(X_train, batch_size=cfg.batch_size, shuffle=True, drop_last=False)

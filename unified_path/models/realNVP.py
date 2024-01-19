@@ -378,3 +378,21 @@ class RealNVP_Path(RealNVP):
             log_det += sign * c_log_det
 
         return x, log_det, dLdx
+
+
+def infinite_sampling(dataloader):
+    while True:
+        yield from iter(dataloader)
+
+
+def load_RealNVP(cfg):
+    model = RealNVP if "fastPath" not in cfg.gradient_estimator else RealNVP_Path
+    flow = model(
+        lat_shape=[cfg.dim],
+        coupling_factory=COUPLINGS["NormAltFCS"],
+        ncouplings=cfg.n_coupling_layers,
+        nblocks=cfg.n_blocks,
+        n_hidden=cfg.hidden,
+        loss=cfg.gradient_estimator,
+    )
+    return flow

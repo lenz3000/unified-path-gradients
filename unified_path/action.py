@@ -11,6 +11,7 @@ class Action:
     def __call__(self, phi):
         return self.evaluate(phi)
 
+
 class MGM(Action, torch.nn.Module):
     def __init__(
         self, device="cpu", clusters=2, dim=2, cluster_loc=1.0, cluster_scale=0.5
@@ -48,7 +49,7 @@ class MGM(Action, torch.nn.Module):
         self.weights = self.weights.to(device)
 
     def evaluate(self, field):
-        return  -self.log_prob(field)
+        return -self.log_prob(field)
 
     def log_prob(self, data):
         """LogSumExp trick used to stabilize for weird values we sum over the clusters and divide
@@ -88,6 +89,7 @@ class MGM(Action, torch.nn.Module):
 
         return samples
 
+
 class U1GaugeAction(Action):
     def __init__(self, beta):
         self.beta = beta
@@ -103,6 +105,5 @@ class U1GaugeAction(Action):
     def evaluate(self, field):
         Nd = field.shape[1]
         return -self.beta * torch.sum(
-            self.actions_per_site(field),
-            dim=tuple(range(1, Nd + 1))
+            self.actions_per_site(field), dim=tuple(range(1, Nd + 1))
         )

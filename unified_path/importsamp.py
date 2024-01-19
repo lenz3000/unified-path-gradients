@@ -29,8 +29,6 @@ def estimate_ess_q(model, action, lat_shape, batch_size, n_iter):
     return ess.item()
 
 
-
-
 def estimate_ess_p(model, config_sampler, action, lat_shape, device="cpu"):
     """Forward ESS Only difference to estimate_ess_mit() is that the sampler lost the zero index
     select.

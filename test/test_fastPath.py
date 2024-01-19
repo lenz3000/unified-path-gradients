@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from argparse import Namespace
 
 from unified_path.action import Action
-from minimal_mgm_example import load_flow, infinite_sampling
+from unified_path.models.realNVP import load_RealNVP, infinite_sampling
 from unified_path.loss import load_loss
 from unified_path.models import U1Flow_Path
 
@@ -63,9 +63,9 @@ def gather_grads(model):
 def get_fast_slow_twins():
     gen_dict_ = dict(gen_dict)
 
-    fast_flow = load_flow(Namespace(**gen_dict)).to(device)
+    fast_flow = load_RealNVP(Namespace(**gen_dict)).to(device)
     gen_dict_["gradient_estimator"] = "RepQP"
-    slow_flow = load_flow(Namespace(**gen_dict_)).to(device)
+    slow_flow = load_RealNVP(Namespace(**gen_dict_)).to(device)
 
     transfer_path_flow_to_normal_flow(slow_flow, fast_flow)
     fast_flow.zero_grad()
@@ -163,7 +163,7 @@ def test_piggyBack_CouplingFlows():
         assert torch.allclose(x, x2, atol=1e-5)
         assert torch.allclose(logdet, logdet2, atol=1e-5)
 
-    flow = load_flow(Namespace(**gen_dict)).to(device)
+    flow = load_RealNVP(Namespace(**gen_dict)).to(device)
     piggy_back_eval(flow)
 
     flow = U1Flow_Path(
@@ -183,7 +183,7 @@ def test_invert_CouplingFlows():
         assert torch.allclose(eps_train, eps2, atol=1e-5)
         assert torch.allclose(logq, logq2, atol=1e-5)
 
-    flow = load_flow(Namespace(**gen_dict)).to(device)
+    flow = load_RealNVP(Namespace(**gen_dict)).to(device)
     invert_eval(flow)
 
     flow = U1Flow_Path(
