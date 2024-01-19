@@ -140,7 +140,6 @@ class U1Flow_Path(U1Flow):
         # Propagate x, log q and force through flow couplings
         for coupling in self.couplings:
             x, c_log_det, dLdx = coupling._apply_coupling(x, dLdx)
-            # Maybe sign is wrong, gotta check
             log_det -= c_log_det
 
         return x, log_det, dLdx
@@ -164,27 +163,29 @@ class U1CouplingWrapper(nn.Module):
     def _apply_coupling(self, z, dlogqdz):
         # Preparing the variables
         z.requires_grad_(True)
-        m_active = self.coupling.active_mask
-        m_frozen = 1 - m_active
+
+        # Due to its gauge invariance, this coupling mask is more complex than a standard one
+        m_trans = self.coupling.active_mask
+        m_cond = 1 - m_trans
 
         def split(x):
-            x_frozen = torch.masked_select(x, m_frozen.bool()).reshape(
+            x_cond = torch.masked_select(x, m_cond.bool()).reshape(
                 (*dlogqdz.shape[:1], -1)
             )
-            x_active = torch.masked_select(x, m_active.bool()).reshape(
+            x_trans = torch.masked_select(x, m_trans.bool()).reshape(
                 (*dlogqdz.shape[:1], -1)
             )
-            return x_frozen, x_active
+            return x_cond, x_trans
 
-        def join(x_frozen, x_active):
+        def join(x_cond, x_trans):
             x = torch.zeros_like(z)
-            x.masked_scatter_(m_frozen.bool(), x_frozen.reshape(-1))
-            x.masked_scatter_(m_active.bool(), x_active.reshape(-1))
+            x.masked_scatter_(m_cond.bool(), x_cond.reshape(-1))
+            x.masked_scatter_(m_trans.bool(), x_trans.reshape(-1))
             return x
 
-        frozen_z, active_z = split(z)
-        z_ = join(frozen_z, active_z)
-        dlogqdz_frozen, dlogqdz_active = split(dlogqdz)
+        cond_z, trans_z = split(z)
+        z_ = join(cond_z, trans_z)
+        dlogqdz_cond, dlogqdz_trans = split(dlogqdz)
 
         # Applying the coupling
         x, c_log_det_d = self.coupling(z_, sum_d=False)
@@ -192,29 +193,29 @@ class U1CouplingWrapper(nn.Module):
         c_log_det_d = c_log_det_d[:, self.coupling.plaquette_coupling.m_active.bool()]
 
         # Redoing the splitting
-        _, active_x = split(x)
+        _, trans_x = split(x)
 
-        dx_actdz_act = c_log_det_d.exp()
+        dx_transdz_trans = c_log_det_d.exp()
         # Gradient resulting from log det Jacobian
         ddldz = torch.autograd.grad(
             -c_log_det.sum(),
-            (frozen_z, active_z),
+            (cond_z, trans_z),
             retain_graph=True,
             allow_unused=False,
         )
         # Implicit gradients
-        dLdx_active = (dlogqdz_active + ddldz[1]) / dx_actdz_act
-        ddx_actdz_frozen = torch.autograd.grad(
-            active_x,
-            frozen_z,
-            grad_outputs=dLdx_active,
+        dLdx_trans = (dlogqdz_trans + ddldz[1]) / dx_transdz_trans
+        ddx_transdz_cond = torch.autograd.grad(
+            trans_x,
+            cond_z,
+            grad_outputs=dLdx_trans,
             retain_graph=True,
         )[0]
 
-        dLdx_frozen = dlogqdz_frozen - ddx_actdz_frozen + ddldz[0]
+        dLdx_cond = dlogqdz_cond - ddx_transdz_cond + ddldz[0]
 
         # Appending the piggy back gradients to the inputs
-        dLdx = join(dLdx_frozen, dLdx_active)
+        dLdx = join(dLdx_cond, dLdx_trans)
 
         return x, c_log_det, dLdx
 
