@@ -28,7 +28,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
-        python -m pip install -e .
+        python -m pip install .
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
@@ -38,6 +38,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
+        pip freeze 
         pytest
         python minimal_mgm_example.py --gradient-estimator fastPathPQ --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
         python minimal_mgm_example.py --gradient-estimator fastPathQP --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
