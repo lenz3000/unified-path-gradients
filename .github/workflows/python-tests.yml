@@ -39,10 +39,10 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
-        python minimal_mgm_example.py --gradient-estimator fastPathPQ --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
-        python minimal_mgm_example.py --gradient-estimator fastPathQP --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
-        python minimal_mgm_example.py --gradient-estimator DropInQP --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
-        python minimal_mgm_example.py --gradient-estimator FastDropInPQ --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
+        python script/mgm_train.py --gradient-estimator fastPathPQ --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
+        python script/mgm_train.py --gradient-estimator fastPathQP --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
+        python script/mgm_train.py --gradient-estimator DropInQP --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
+        python script/mgm_train.py --gradient-estimator FastDropInPQ --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
         python minimal_mgm_example.py --gradient-estimator ML --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
         python minimal_mgm_example.py --gradient-estimator RepQP --nsamples 10 --steps 2 --batch-size 10 --hidden 4 --n-coupling-layers 2 --n-blocks 2
         
