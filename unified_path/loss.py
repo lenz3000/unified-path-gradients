@@ -134,7 +134,7 @@ class FastDropInPathPQ(MaximumLikelihood):
 
     def forward(self, samples=None):
         if samples is None:
-            samples = next(self.config_sampler)[0].to(self.device)
+            samples = next(self.config_sampler).to(self.device)
         x1 = samples.detach().clone().requires_grad_()
 
         z1, logq = self.model.f(x1)
