@@ -105,3 +105,9 @@ def invert_transform_bisect(y, *, f, tol, max_iter, a=0, b=2 * np.pi):
             f"WARNING: Did not converge to tol {tol} in {max_iter} iters! Error was {err}"
         )
         return mid_x
+
+
+def gather_grads(model: torch.nn.Module):
+    return torch.concat(
+        tuple(p.grad.reshape(-1) for p in model.parameters() if p.grad is not None)
+    )

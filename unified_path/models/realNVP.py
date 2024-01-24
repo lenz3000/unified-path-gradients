@@ -395,3 +395,18 @@ def load_RealNVP(cfg):
         loss=cfg.gradient_estimator,
     )
     return flow
+
+
+def transfer_path_flow_to_normal_flow(slow_flow, fast_flow):
+    fast_dict = fast_flow.state_dict()
+
+    slow_sdict = {}
+    for key, item in fast_dict.items():
+        if len(key.split(".")) > 2 and key.split(".")[2] == "coupling":
+            newkey = key.split(".")
+            del newkey[2]
+            slow_sdict[".".join(newkey)] = item
+        else:
+            slow_sdict[key] = item
+
+    slow_flow.load_state_dict(slow_sdict)

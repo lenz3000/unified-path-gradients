@@ -114,7 +114,7 @@ class MaximumLikelihood(torch.nn.Module):
 
     def forward(self, samples=None):
         if samples is None:
-            samples = next(self.config_sampler)[0].to(self.device)
+            samples = next(self.config_sampler).to(self.device)
         # The action only appears here for comparing the loss
         actions = self.action(samples)
         loss = -self.model.log_prob(samples)
@@ -178,6 +178,7 @@ class FastPath(Loss):
         device=torch.device("cpu"),
     ):
         super().__init__(model, action, lat_shape, batch_size)
+        self.device = device
         if not hasattr(self.sampler, "piggy_back_forward"):
             raise TypeError("Model not a path gradient flow")
 
@@ -204,7 +205,7 @@ class FastPath(Loss):
                 samples = self.sampler.sample_base(self.batch_size)
             else:
                 # Or from the target
-                samples = next(self.config_sampler)[0].to(self.device)
+                samples = next(self.config_sampler).to(self.device)
 
         # Gather initial values, including the force of the initial distribution
         if self.reverse_kl:

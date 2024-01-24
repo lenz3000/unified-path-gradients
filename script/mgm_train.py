@@ -25,9 +25,6 @@ def train(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optim, T_max=steps, eta_min=1e-6
     )
-    train_dataloader = infinite_sampling(
-        DataLoader(train_data, batch_size=batch_size, shuffle=True, drop_last=False)
-    )
     test_dataloader = DataLoader(
         test_data, batch_size=batch_size, shuffle=True, drop_last=False
     )
@@ -38,9 +35,8 @@ def train(
     forward_ess = -1.0
     pbar = tqdm(range(steps))
     for i in pbar:
-        batch = next(train_dataloader)
         flow.zero_grad()
-        loss, logq, action = kl(batch)
+        loss, _, _ = kl()
 
         if loss is not None:
             loss.backward()
@@ -50,23 +46,30 @@ def train(
         scheduler.step()
         if (i % 10) == 0 or i == steps:
             with torch.no_grad():
-                train_nll = -flow.log_prob(batch).mean()
                 test_nll = -flow.log_prob(
                     test_data
                 ).mean()  # flow probability log q_θ(x)
-
+                nll_info = f" test {test_nll.item():.3e}"
+                if train_data is not None:
+                    train_nll = -flow.log_prob(train_data).mean()
+                    nll_info += f"train {train_nll.item():.3e}"
             ess = estimate_reverse_ess(
-                flow, kl.action, lat_shape=batch.shape[1:], batch_size=1_000, n_iter=5
+                flow,
+                kl.action,
+                lat_shape=test_data.shape[1:],
+                batch_size=1_000,
+                n_iter=5,
             )
             forward_ess = estimate_forward_ess(
                 model=flow,
                 config_sampler=test_dataloader,
                 action=kl.action,
-                lat_shape=batch.shape[1:],
+                lat_shape=test_data.shape[1:],
                 device=loss.device,
             )
+
             pbar.set_description(
-                f"loss: {loss.item():.3e} || NLL train {train_nll.item():.3e} test {test_nll.item():.3e}"
+                f"loss: {loss.item():.3e} || NLL {nll_info}"
                 f"|| ESS q:{ess:.3f} p:{forward_ess:.3f}"
             )
 
@@ -105,7 +108,7 @@ def main(**cfg):
 
     torch.manual_seed(cfg.seed)
     print("Setting up action and sampling ...")
-    num_test_samples = 1_000
+    num_test_samples = 10_000
 
     device = (
         torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
@@ -117,14 +120,20 @@ def main(**cfg):
         cluster_loc=cfg.mgm_loc,
         cluster_scale=cfg.mgm_scale,
     ).to(device)
-    train_data = target_action.sample((cfg.nsamples,)).to(device)
+
+    train_data = None
+    if cfg.gradient_estimator in ["ML", "FastDropInPQ", "fastPathPQ"]:
+        train_data = target_action.sample((cfg.nsamples,)).to(device)
+        config_sampler = infinite_sampling(
+            DataLoader(
+                train_data, batch_size=cfg.batch_size, shuffle=True, drop_last=False
+            )
+        )
+    else:
+        config_sampler = None
     test_data = target_action.sample((num_test_samples,)).to(device)
 
     flow = load_RealNVP(cfg).to(device)
-
-    config_sampler = infinite_sampling(
-        DataLoader(train_data, batch_size=cfg.batch_size, shuffle=True, drop_last=False)
-    )
 
     loss = load_loss(cfg, flow, target_action, device, config_sampler=config_sampler)
 

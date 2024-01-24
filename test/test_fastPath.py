@@ -4,9 +4,14 @@ from torch.utils.data import DataLoader
 from argparse import Namespace
 
 from unified_path.action import Action
-from unified_path.models.realNVP import load_RealNVP, infinite_sampling
+from unified_path.models.realNVP import (
+    load_RealNVP,
+    infinite_sampling,
+    transfer_path_flow_to_normal_flow,
+)
 from unified_path.loss import load_loss
 from unified_path.models import U1Flow_Path
+from unified_path.utils import gather_grads
 
 
 class Normal(Action):
@@ -37,27 +42,6 @@ gen_dict = {
     "n_blocks": 2,
     "hidden": 32,
 }
-
-
-def transfer_path_flow_to_normal_flow(slow_flow, fast_flow):
-    fast_dict = fast_flow.state_dict()
-
-    slow_sdict = {}
-    for key, item in fast_dict.items():
-        if len(key.split(".")) > 2 and key.split(".")[2] == "coupling":
-            newkey = key.split(".")
-            del newkey[2]
-            slow_sdict[".".join(newkey)] = item
-        else:
-            slow_sdict[key] = item
-
-    slow_flow.load_state_dict(slow_sdict)
-
-
-def gather_grads(model):
-    return torch.concat(
-        tuple(p.grad.reshape(-1) for p in model.parameters() if p.grad is not None)
-    )
 
 
 def get_fast_slow_twins():
