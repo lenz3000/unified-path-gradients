@@ -186,7 +186,6 @@ class RealNVP(nn.Module):
         activation="tanh",
         base_dist="Gaussian",
         loss=None,
-        gen_wrapper=None,
     ):
         super().__init__()
         self.lat_shape = lat_shape
@@ -284,7 +283,7 @@ class RealNVP(nn.Module):
         self.load_state_dict(torch.load(checkpoint, map_location=device)["net"])
 
 
-class PathAffineCouplingWrapper(torch.nn.Module):
+class AffineCouplingPathWrapper(torch.nn.Module):
     """Wrapper for coupling layers for implementing the path gradient Only when training and for
     the forward pass the path gradient is applied."""
 
@@ -352,7 +351,7 @@ class PathAffineCouplingWrapper(torch.nn.Module):
 class RealNVP_Path(RealNVP):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        wrapper = PathAffineCouplingWrapper
+        wrapper = AffineCouplingPathWrapper
         self.couplings = nn.ModuleList(
             [wrapper(coupling) for coupling in self.couplings]
         )

@@ -1,28 +1,49 @@
 import torch
 import einops
+import abc
 from torch.distributions import MultivariateNormal
 from .lattice import plaquette
 
 
-class Action:
-    def evaluate(self, field):
-        return torch.zeros(field.shape[0], device=field.device)
+class Action(torch.nn.Module, abc.ABC):
+    @abc.abstractmethod
+    def evaluate(self, field) -> torch.Tensor:
+        pass
 
     def __call__(self, phi):
         return self.evaluate(phi)
 
 
-class MGM(Action, torch.nn.Module):
+class MGM(Action):
+    """
+    The MGM action is defined as the log of the sum of two Gaussian distributions
+    for each dimension `i` in the input `x`.
+
+    The equation for the action is:
+        L = log(Σ(N(x_i; -cluster_loc, cluster_scale) + N(x_i; cluster_loc, cluster_scale)))
+    where N(x; μ, σ) is the normal distribution with mean μ and standard deviation σ,
+    x_i is the ith element of the input, and the sum is over the dimension `d` of the input.
+
+    """
+
     def __init__(
         self, device="cpu", clusters=2, dim=2, cluster_loc=1.0, cluster_scale=0.5
     ):
+        """
+        Parameters:
+            device (str): The device to run the calculations on, default is "cpu".
+            clusters (int): The number of clusters, default is 2.
+            dim (int): The dimensionality of the input, default is 2.
+            cluster_loc (float): The location (mean) of the clusters, default is 1.0.
+            cluster_scale (float): The scale (standard deviation) of the clusters, default is 0.5.
+        """
         Action.__init__(self)
         torch.nn.Module.__init__(self)
 
         assert dim >= 2, "Dimensionality has to be >=2"
         self.dim = dim
         self.device = device
-        """Outer product of cluster locations."""
+        # Outer product of cluster locations
         locs = torch.meshgrid(
             dim * [torch.linspace(-cluster_loc, cluster_loc, clusters)], indexing="ij"
         )
@@ -67,7 +88,6 @@ class MGM(Action, torch.nn.Module):
         log_probs_data = self.dist.log_prob(data)  # [b, c]
         log_probs = log_probs_cluster + log_probs_data
         log_probs = torch.logsumexp(log_probs, dim=-1)  # [b, c] -> [b]
-        # print(f"{log_probs.shape=}")
         return log_probs
 
     def sample(self, num_samples=(1,)):
@@ -91,7 +111,15 @@ class MGM(Action, torch.nn.Module):
 
 
 class U1GaugeAction(Action):
+    """
+    U1 Wilson Action
+    Original code from https://arxiv.org/abs/2101.08176"""
+
     def __init__(self, beta):
+        """
+        Parameters:
+            beta (float): Inverse Gauge Coupling parameter
+        """
         self.beta = beta
 
     def actions_per_site(self, theta):

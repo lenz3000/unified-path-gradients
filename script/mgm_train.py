@@ -8,40 +8,37 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from unified_path.action import MGM
-from unified_path.importsamp import estimate_ess_q, estimate_ess_p
+from unified_path.importsamp import estimate_reverse_ess, estimate_forward_ess
 from unified_path.loss import load_loss
 from unified_path.models.realNVP import load_RealNVP, infinite_sampling
 
 
 def train(
     flow,
-    X_train,
-    X_test,
+    train_data,
+    test_data,
     kl,
     steps=1000,
     batch_size=500,
-    v=True,
 ):
     optim = torch.optim.Adam(flow.parameters(), lr=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optim, T_max=steps, eta_min=1e-6
     )
-    dataloader = infinite_sampling(
-        DataLoader(X_train, batch_size=batch_size, shuffle=True, drop_last=False)
+    train_dataloader = infinite_sampling(
+        DataLoader(train_data, batch_size=batch_size, shuffle=True, drop_last=False)
     )
-    fw_ESS_dataloader = DataLoader(
-        X_test, batch_size=batch_size, shuffle=True, drop_last=False
+    test_dataloader = DataLoader(
+        test_data, batch_size=batch_size, shuffle=True, drop_last=False
     )
-    tr_l, te_l = [], []
+    train_losses, test_losses = [], []
     test_nll = torch.Tensor([0.0])
     train_nll = torch.Tensor([0.0])
     ess = -1.0
     forward_ess = -1.0
-    pbar = range(steps)
-    if v:
-        pbar = tqdm(pbar)
+    pbar = tqdm(range(steps))
     for i in pbar:
-        batch = next(dataloader)
+        batch = next(train_dataloader)
         flow.zero_grad()
         loss, logq, action = kl(batch)
 
@@ -51,17 +48,19 @@ def train(
             loss = torch.Tensor([0.0])
         optim.step()
         scheduler.step()
-        if v and (i % 10) == 0 or i == steps:
+        if (i % 10) == 0 or i == steps:
             with torch.no_grad():
                 train_nll = -flow.log_prob(batch).mean()
-                test_nll = -flow.log_prob(X_test).mean()  # flow probability log q_θ(x)
+                test_nll = -flow.log_prob(
+                    test_data
+                ).mean()  # flow probability log q_θ(x)
 
-            ess = estimate_ess_q(
+            ess = estimate_reverse_ess(
                 flow, kl.action, lat_shape=batch.shape[1:], batch_size=1_000, n_iter=5
             )
-            forward_ess = estimate_ess_p(
+            forward_ess = estimate_forward_ess(
                 model=flow,
-                config_sampler=fw_ESS_dataloader,
+                config_sampler=test_dataloader,
                 action=kl.action,
                 lat_shape=batch.shape[1:],
                 device=loss.device,
@@ -71,10 +70,10 @@ def train(
                 f"|| ESS q:{ess:.3f} p:{forward_ess:.3f}"
             )
 
-        tr_l.append(loss.item())
-        te_l.append(test_nll.item())
+        train_losses.append(loss.item())
+        test_losses.append(test_nll.item())
 
-    return tr_l, te_l
+    return train_losses, test_losses
 
 
 @click.command()
@@ -111,28 +110,28 @@ def main(**cfg):
     device = (
         torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     )
-    norm_action = MGM(
+    target_action = MGM(
         dim=cfg.dim,
         device=device,
         clusters=2,
         cluster_loc=cfg.mgm_loc,
         cluster_scale=cfg.mgm_scale,
     ).to(device)
-    X_train = norm_action.sample((cfg.nsamples,)).to(device)
-    X_test = norm_action.sample((num_test_samples,)).to(device)
+    train_data = target_action.sample((cfg.nsamples,)).to(device)
+    test_data = target_action.sample((num_test_samples,)).to(device)
 
     flow = load_RealNVP(cfg).to(device)
 
     config_sampler = infinite_sampling(
-        DataLoader(X_train, batch_size=cfg.batch_size, shuffle=True, drop_last=False)
+        DataLoader(train_data, batch_size=cfg.batch_size, shuffle=True, drop_last=False)
     )
 
-    loss = load_loss(cfg, flow, config_sampler, norm_action, device)
+    loss = load_loss(cfg, flow, target_action, device, config_sampler=config_sampler)
 
     train(
         flow=flow,
-        X_train=X_train,
-        X_test=X_test,
+        train_data=train_data,
+        test_data=test_data,
         kl=loss,
         steps=cfg.steps,
         batch_size=cfg.batch_size,

@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 
-def calc_imp_weights(log_weight_hist, include_factor_N=True):
+def estimate_importance_weights(log_weight_hist, include_factor_N=True):
     """Calculates normalized importance weights from logarithm of unnormalized weights.
 
     If include_factor_N is set, then the result will be multiplied by the number of weights, s.t.

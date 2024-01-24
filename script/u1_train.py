@@ -6,7 +6,7 @@ import torch
 from tqdm.auto import tqdm
 
 from unified_path.action import U1GaugeAction
-from unified_path.importsamp import estimate_ess_q
+from unified_path.importsamp import estimate_reverse_ess
 from unified_path.models import U1Flow, U1Flow_Path
 from unified_path.loss import load_loss, Loss
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -37,6 +37,7 @@ def train(kl_loss: Loss, n_steps):
 
             loss_mean, log_w_tilde, actions = kl_loss()
 
+            # kl_loss may return None if the sampling is instable, then we repeat the step
             if loss_mean is None:
                 step -= 1
                 continue
@@ -46,7 +47,7 @@ def train(kl_loss: Loss, n_steps):
             scheduler.step(log_w_tilde.std())
 
             if step % 4000 == 0:
-                ess = estimate_ess_q(
+                ess = estimate_reverse_ess(
                     kl_loss.sampler,
                     kl_loss.action,
                     kl_loss.lat_shape,
@@ -90,9 +91,7 @@ def main(**cfg):
     action = U1GaugeAction(beta=cfg.beta)
     flow = load_flow(cfg).to(device)
 
-    loss = load_loss(
-        cfg=cfg, flow=flow, config_sampler=None, action=action, device=torch.device
-    )
+    loss = load_loss(cfg=cfg, flow=flow, action=action, device=torch.device)
 
     train(loss, cfg.steps)
 

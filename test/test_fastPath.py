@@ -73,7 +73,7 @@ def get_fast_slow_twins():
     return fast_flow, slow_flow
 
 
-def test_PastLoss():
+def test_fastLoss():
     fast_flow, slow_flow = get_fast_slow_twins()
     eps_train = fast_flow.sample_base(n_samples)
 
@@ -84,7 +84,6 @@ def test_PastLoss():
             batch_size=n_samples,
         ),
         fast_flow,
-        None,
         norm_action,
         device,
     )
@@ -95,7 +94,6 @@ def test_PastLoss():
             batch_size=n_samples,
         ),
         slow_flow,
-        None,
         norm_action,
         device,
     )
@@ -123,9 +121,9 @@ def check_fastPath_RealNVP_grads(direction):
             batch_size=n_samples,
         ),
         fast_flow,
-        config_sampler,
         norm_action,
         device,
+        config_sampler,
     )
     slow_pathQP = load_loss(
         Namespace(
@@ -134,9 +132,9 @@ def check_fastPath_RealNVP_grads(direction):
             batch_size=n_samples,
         ),
         slow_flow,
-        config_sampler,
         norm_action,
         device,
+        config_sampler,
     )
     floss = fast_pathQP(eps_train)
     sloss = slow_pathQP(eps_train)

@@ -1,3 +1,4 @@
+# Adapted from https://arxiv.org/abs/2101.08176
 import numpy as np
 import torch
 

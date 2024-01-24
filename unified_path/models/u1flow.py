@@ -128,7 +128,9 @@ class U1Flow_Path(U1Flow):
         super().__init__(
             lat_shape, n_layers, n_mixture_comps, hidden_sizes, kernel_size
         )
-        self.couplings = nn.ModuleList([U1CouplingWrapper(c) for c in self.couplings])
+        self.couplings = nn.ModuleList(
+            [U1CouplingPathWrapper(c) for c in self.couplings]
+        )
 
     def piggy_back_forward(self, x, dLdx, reverse=False):
         assert not reverse, "This PathWrapperFlow is not made for reverse piggy_back"
@@ -145,7 +147,7 @@ class U1Flow_Path(U1Flow):
         return x, log_det, dLdx
 
 
-class U1CouplingWrapper(nn.Module):
+class U1CouplingPathWrapper(nn.Module):
     def __init__(self, coupling) -> None:
         super().__init__()
         self.coupling = coupling
