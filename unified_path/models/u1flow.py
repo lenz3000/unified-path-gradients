@@ -63,7 +63,7 @@ class U1Flow(nn.Module):
     def sample_base(self, batch_size):
         return self.base_distribution.sample((batch_size, *self.link_shape))
 
-    def _prior_log_prob(self, z):
+    def _base_log_prob(self, z):
         # Adding 0. so that there are some gradients
         return self.base_distribution.log_prob(z).sum(dim=(1, 2, 3)) + 0.0 * z.sum(
             dim=(1, 2, 3)

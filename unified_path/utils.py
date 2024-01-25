@@ -111,3 +111,8 @@ def gather_grads(model: torch.nn.Module):
     return torch.concat(
         tuple(p.grad.reshape(-1) for p in model.parameters() if p.grad is not None)
     )
+
+
+def infinite_sampling(dataloader):
+    while True:
+        yield from iter(dataloader)

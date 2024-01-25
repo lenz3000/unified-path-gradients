@@ -10,7 +10,8 @@ from tqdm.auto import tqdm
 from unified_path.action import MGM
 from unified_path.importsamp import estimate_reverse_ess, estimate_forward_ess
 from unified_path.loss import load_loss
-from unified_path.models.realNVP import load_RealNVP, infinite_sampling
+from unified_path.models.realNVP import load_RealNVP
+from unified_path.utils import infinite_sampling
 
 
 def train(
@@ -52,7 +53,7 @@ def train(
                 nll_info = f" test {test_nll.item():.3e}"
                 if train_data is not None:
                     train_nll = -flow.log_prob(train_data).mean()
-                    nll_info += f"train {train_nll.item():.3e}"
+                    nll_info += f" train {train_nll.item():.3e}"
             ess = estimate_reverse_ess(
                 flow,
                 kl.action,
@@ -97,7 +98,6 @@ def train(
 @click.option("--nsamples", default=10_000, help="Number of samples")
 @click.option("--mgm-loc", default=1.0, help="MGM cluster loc")
 @click.option("--mgm-scale", default=0.5, help="MGM cluster scale")
-@click.option("--verbose", default=True, help="Verbose")
 @click.option("--dim", default=6, type=int, help="dim of data")
 def main(**cfg):
     """Function to get all CLI arguments into script."""

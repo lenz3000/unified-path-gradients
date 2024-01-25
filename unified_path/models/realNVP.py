@@ -222,7 +222,7 @@ class RealNVP(nn.Module):
         :param x: latent dim z which is transformed to x
         :return:
         """
-        log_det = self._prior_log_prob(x)  # log q(z)
+        log_det = self._base_log_prob(x)  # log q(z)
 
         for coupling in self.couplings:
             # evaluate coupling layers and adding log det Jacobian to log det
@@ -244,7 +244,7 @@ class RealNVP(nn.Module):
             log_det -= c_log_det
 
         # add prior entropy estimate
-        log_prob = self._prior_log_prob(x) + log_det
+        log_prob = self._base_log_prob(x) + log_det
 
         return x, log_prob
 
@@ -273,7 +273,7 @@ class RealNVP(nn.Module):
     def reverse(self, x):
         return self.f(x)
 
-    def _prior_log_prob(self, z):
+    def _base_log_prob(self, z):
         z = z.reshape(z.shape[0], -1)
 
         log_prob_per_sample = self.base_dist().log_prob(z)
@@ -377,11 +377,6 @@ class RealNVP_Path(RealNVP):
             log_det += sign * c_log_det
 
         return x, log_det, dLdx
-
-
-def infinite_sampling(dataloader):
-    while True:
-        yield from iter(dataloader)
 
 
 def load_RealNVP(cfg):

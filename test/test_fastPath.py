@@ -6,12 +6,11 @@ from argparse import Namespace
 from unified_path.action import Action
 from unified_path.models.realNVP import (
     load_RealNVP,
-    infinite_sampling,
     transfer_path_flow_to_normal_flow,
 )
 from unified_path.loss import load_loss
 from unified_path.models import U1Flow_Path
-from unified_path.utils import gather_grads
+from unified_path.utils import gather_grads, infinite_sampling
 
 
 class Normal(Action):
@@ -140,7 +139,7 @@ def test_piggyBack_CouplingFlows():
     def piggy_back_eval(flow):
         eps_train = flow.sample_base(n_samples)
         x, logq = flow.g(eps_train)
-        logdet = logq - flow._prior_log_prob(eps_train)
+        logdet = logq - flow._base_log_prob(eps_train)
         x2, logdet2, _ = flow.piggy_back_forward(eps_train, torch.zeros_like(eps_train))
         assert torch.allclose(x, x2, atol=1e-5)
         assert torch.allclose(logdet, logdet2, atol=1e-5)

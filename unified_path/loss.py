@@ -210,8 +210,8 @@ class FastPath(Loss):
         # Gather initial values, including the force of the initial distribution
         if self.reverse_kl:
             x_ = torch.autograd.Variable(samples, requires_grad=True)
-            lq0x = self.sampler._prior_log_prob(samples)
-            initial_px = self.sampler._prior_log_prob(x_)
+            lq0x = self.sampler._base_log_prob(samples)
+            initial_px = self.sampler._base_log_prob(x_)
             sign = -1
         else:
             x_ = torch.autograd.Variable(samples, requires_grad=True)
@@ -233,7 +233,7 @@ class FastPath(Loss):
             actions = self.action(x.reshape(-1, *self.lat_shape))
             final_px = -actions
         else:
-            lq0x = self.sampler._prior_log_prob(x)
+            lq0x = self.sampler._base_log_prob(x)
             final_px = -lq0x
         log_q = lq0x - sign * delta_trans
         dfinalpdx = torch.autograd.grad(

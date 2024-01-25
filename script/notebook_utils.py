@@ -7,6 +7,7 @@ def plot_action(
     sampler=None,
     nlevels=10,
     device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+    train_data=None
 ):
     lim = 3.5
     step_size = 0.05
@@ -39,6 +40,9 @@ def plot_action(
         )
         # plt.gca().clabel(im, inline=True, fontsize=10, colors='green')
     # plt.colorbar(im)
+    if train_data is not None:
+        plt.scatter(*train_data.T, marker=".", color="white", alpha=0.5)
     plt.xlim([-lim, lim])
     plt.ylim([-lim, lim])
+    plt.axis("off")
     return {"x": x, "y": x, "log p(x)": logp_x, "log q(x)": log_q, "kl(p|q)": kl_pq, "Z": zTrue}
