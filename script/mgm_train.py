@@ -115,7 +115,7 @@ def main(**cfg):
     num_test_samples = 10_000
 
     device = (
-        torch.device("cuda:0") if torch.cuda.is_available() else torch.device("mps")
+        torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
     )
     target_action = MGM(
         dim=cfg.dim,
