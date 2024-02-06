@@ -7,6 +7,10 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
+import sys
+
+sys.path.append("../")
+
 from unified_path.action import MGM
 from unified_path.importsamp import estimate_reverse_ess, estimate_forward_ess
 from unified_path.loss import load_loss
@@ -15,12 +19,12 @@ from unified_path.utils import infinite_sampling
 
 
 def train(
-    flow,
-    train_data,
-    test_data,
-    kl,
-    steps=1000,
-    batch_size=500,
+        flow,
+        train_data,
+        test_data,
+        kl,
+        steps=1000,
+        batch_size=500,
 ):
     optim = torch.optim.Adam(flow.parameters(), lr=1e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -45,7 +49,7 @@ def train(
             loss = torch.Tensor([0.0])
         optim.step()
         scheduler.step()
-        if (i % 10) == 0 or i == steps:
+        if (i % 100) == 0 or i == steps:
             with torch.no_grad():
                 test_nll = -flow.log_prob(
                     test_data
@@ -82,9 +86,9 @@ def train(
 
 @click.command()
 @click.option("--seed", default=0, help="")
-@click.option("--steps", default=1_000, help="Number of iterations")
-@click.option("--batch-size", default=1_000, help="Batch size")
-@click.option("--hidden", default=1_000, help="Hidden size")
+@click.option("--steps", default=10_000, help="Number of iterations")
+@click.option("--batch-size", default=2_000, help="Batch size")
+@click.option("--hidden", default=1000, help="Hidden size")
 @click.option(
     "--gradient-estimator",
     type=click.Choice(
@@ -111,7 +115,7 @@ def main(**cfg):
     num_test_samples = 10_000
 
     device = (
-        torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        torch.device("cuda:0") if torch.cuda.is_available() else torch.device("mps")
     )
     target_action = MGM(
         dim=cfg.dim,
