@@ -1,6 +1,6 @@
 ### Fast and Unified Path Gradients
 
-This is the official, simple and fast implementation of path gradients for both forward and reverse KL's from the paper "Fast and Unified Path Gradients for Shading and Lighting" by Lorenz Vaitl, Ludwig Winkler, Lorenz Richter and Pan Kessel.
+This is the official, simple and fast implementation of path gradients for both forward and reverse KL's from the paper "Fast and Unified Path Gradient Estimators" by Lorenz Vaitl, Ludwig Winkler, Lorenz Richter and Pan Kessel.
 
 ### Abstract
 
