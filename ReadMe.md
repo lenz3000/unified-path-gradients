@@ -38,4 +38,4 @@ We provide the following gradient estimators:
 - `fastPathQP`: fast path gradient estimator for reverse KL
 - `fastPathPQ`: fast path gradient estimator for forward KL
 
-The `fastpath` family of estimators utilize the fast path gradient estimator from the paper and exploit redundant and recursive operations to obtain the benefits of path gradients with just 1.3X over standrad non-path gradient estimators.
+The `fastpath` family of estimators utilize the fast path gradient estimator from the paper and exploit redundant and recursive operations to obtain the benefits of path gradients.
