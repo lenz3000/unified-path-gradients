@@ -161,7 +161,7 @@ class NormAltFCSCoupling(AltFCSCoupling):
                 *[
                     nn.Sequential(
                         nn.BatchNorm1d(mid_dim, momentum=0.01, affine=True),
-                        torch.nn.utils.weight_norm(
+                        torch.nn.utils.parametrizations.weight_norm(
                             nn.Linear(mid_dim, mid_dim, bias=bias)
                         ),
                         act(),
@@ -383,7 +383,7 @@ def load_RealNVP(cfg):
     model = RealNVP if "fastPath" not in cfg.gradient_estimator else RealNVP_Path
     flow = model(
         lat_shape=[cfg.dim],
-        coupling_factory=COUPLINGS["AltFCS"],
+        coupling_factory=COUPLINGS["NormAltFCS"],
         ncouplings=cfg.n_coupling_layers,
         nblocks=cfg.n_blocks,
         n_hidden=cfg.hidden,

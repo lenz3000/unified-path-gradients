@@ -86,18 +86,18 @@ def train(
 
 @click.command()
 @click.option("--seed", default=0, help="")
-@click.option("--steps", default=10_000, help="Number of iterations")
-@click.option("--batch-size", default=2_000, help="Batch size")
-@click.option("--hidden", default=1000, help="Hidden size")
+@click.option("--steps", default=5_000, help="Number of iterations")
+@click.option("--batch-size", default=500, help="Batch size")
+@click.option("--hidden", default=500, help="Hidden size")
 @click.option(
     "--gradient-estimator",
     type=click.Choice(
         ["RepQP", "ML", "fastPathPQ", "fastPathQP", "DropInQP", "FastDropInPQ"]
     ),
-    default="fastPathQP",
+    default="fastPathPQ",
     help="Gradient Estimator",
 )
-@click.option("--n-coupling-layers", default=6, help="Number of coupling layers")
+@click.option("--n-coupling-layers", default=4, help="Number of coupling layers")
 @click.option("--n-blocks", default=6, help="blocks per coupling layer")
 @click.option("--nsamples", default=10_000, help="Number of samples")
 @click.option("--mgm-loc", default=1.0, help="MGM cluster loc")
@@ -115,7 +115,7 @@ def main(**cfg):
     num_test_samples = 10_000
 
     device = (
-        torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        torch.device("cuda:0") if torch.cuda.is_available() else torch.device("mps")
     )
     target_action = MGM(
         dim=cfg.dim,
