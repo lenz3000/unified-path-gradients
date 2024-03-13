@@ -163,7 +163,7 @@ class FastPath(Loss):
     If reverse is True, then the forward call computes the reverse KL, and differentiation gives back Path Gradients
     else, the forward KL and its path gradients are computed
 
-    At the core of the algorithm is the recursive operation that computes the gradient of the path along with the sampling.
+    At the core of the algorithm is the recursive operation (line 227) that computes the gradient of the path along with the sampling.
     Since the former is passed along with the sampling, we call it piggy backing
     """
 
@@ -223,7 +223,7 @@ class FastPath(Loss):
             initial_px.sum(), x_, allow_unused=True, retain_graph=True
         )[0]
 
-        # Perform piggy back forward or revserse, to get \partial log rho_\theta(x)/ \partial x
+        # Perform piggy back forward or reverse, to get \partial log rho_\theta(x)/ \partial x
         x, delta_trans, dlogqdx = self.sampler.piggy_back_forward(
             samples, dlogqdx, reverse=not self.reverse_kl
         )
