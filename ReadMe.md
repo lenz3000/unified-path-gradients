@@ -2,6 +2,10 @@
 
 This is the official, simple and fast implementation of path gradients for both forward and reverse KL's from the paper "Fast and Unified Path Gradient Estimators" by Lorenz Vaitl, Ludwig Winkler, Lorenz Richter and Pan Kessel.
 
+> Lorenz Vaitl*, Ludwig Winkler*, Lorenz Richter, Pan Kessel. "Fast and Unified Path Gradient Estimators for Normalizing
+Flows" _International Conference on Learning Representations (2024).
+> [[arxiv]](https://openreview.net/pdf?id=zlkXLb3wpF) [[bibtex]]()
+
 ### Abstract
 
 Recent work shows that path gradient estimators for normalizing flows have lower
@@ -31,11 +35,12 @@ variance for several natural sciences applications.
 
 We provide the following gradient estimators:
 
-- `RepQP`: standard reverse KL estimator
-- `ML`: standard forward KL estimator
-- `DropInQP`: drop-in path gradient reverse for reverse KL
-- `DropInPQ`: drop-in path gradient reverse for forward KL
-- `fastPathQP`: fast path gradient estimator for reverse KL
-- `fastPathPQ`: fast path gradient estimator for forward KL
+- `RepQP`: standard reverse KL estimator without path gradient
+- `ML`: standard forward KL estimator without path gradient
+- `fastPathQP`: fast path gradient estimator for reverse KL with force evaluation
+- `fastPathPQ`: fast path gradient estimator for forward KL with force evaluation
+- `DropInQP`: slow, plug and play path gradient reverse for reverse KL with two evaluations
+- `FastDropInPQ`: plug and play path gradient for forward KL
+
 
 The `fastpath` family of estimators utilize the fast path gradient estimator from the paper and exploit redundant and recursive operations to obtain the benefits of path gradients.
